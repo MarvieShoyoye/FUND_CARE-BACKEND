@@ -5,7 +5,11 @@ import morgan from "morgan";
 import cookieparser from "cookie-parser";
 import helmet from "helmet";
 import connectDb from "./db/db.js";
-import authRoutes from "./routes/authroute.js"
+import authRoutes from "./routes/authroute.js";
+import userRoutes from "./routes/userroute.js";
+import adminRoutes from "./routes/adminroutes.js";
+import campaignRoutes from "./routes/campaignroutes.js";
+import projectRoutes from "./routes/projectroutes.js";
 
 dotenv.config();
 
@@ -22,6 +26,10 @@ app.use(
 );
 
 app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("./api/campaign", campaignRoutes);
+app.use("./api/project", projectRoutes);
 
 
 

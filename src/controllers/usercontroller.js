@@ -4,6 +4,8 @@ import errorResponse from "../utility/error.js";
 
 // controllers/userController.js
 
+
+//CHANGE USER ROLE
 export const changeUserRole = async (req, res, next) => {
   try {
     const { userId } = req.params; 
@@ -13,7 +15,7 @@ export const changeUserRole = async (req, res, next) => {
     if (
       ![
         "donor",
-        "organization",
+        "Healthcare organization",
         "admin",
         "medical professional",
         "medical student",

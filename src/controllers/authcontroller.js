@@ -2,33 +2,61 @@ import UserModel from "../models/usermodel.js";
 import errorResponse from "../utility/error.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { generateOTP, generateExpiryTime } from "../utility/otp.js";
+import { signupEmail, resetPasswordOtpEmail } from "../utility/sender.js";
 
-export const UserSignup = async (req, res, next) => {
+//USER SIGNUP
+export const UserSignUp = async (req, res, next) => {
   const { fullName, email, password } = req.body;
 
   try {
     if (!fullName || !email || !password) {
-      return errorResponse(400, "Please fill all fields");
+      return next(errorResponse(400, "Please fill all fields"));
     }
 
-    const userExist = await UserModel.findOne({ email });
-    if (userExist) return next(errorResponse(409, "User already exists"));
+    // Check if the user already exists by email or phone number
+    const UserExist = await UserModel.findOne({ email });
+    if (UserExist) return next(errorResponse(409, "User already exists"));
 
+    // Generate OTP and hash password
+    const otp = generateOTP();
     const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const expiresAt = generateExpiryTime();
 
-    let user = await UserModel.create({
-      fullName,
-      email,
-      password: hashedPassword,
+    // Send OTP to user via email
+    await signupEmail(email, otp);
+
+    const wallet = await UserWallet.create({
+      userID: user._id,
+      walletBalance: 0,
     });
 
-    user = user.toObject();
-    delete user.password;
+    user.wallet = wallet._id;
 
+    // Create the user object, including referredBy if an affiliate cookie exists
+    const newUser = {
+      fullName,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      wallet,
+      otp: hashedOtp,
+      otpExpiresAt: expiresAt,
+    };
+
+    // Save the new user in the database
+    const user = await UserModel.create(newUser);
+
+    // Return success response
     return res.status(201).json({
       success: true,
-      message: "User created succesfully",
-      data: user,
+      message: "OTP sent successfully",
+      data: {
+        fullName,
+        email: user.email,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
     });
   } catch (error) {
     console.log(error);
@@ -36,6 +64,7 @@ export const UserSignup = async (req, res, next) => {
   }
 };
 
+//LOGIN
 export const UserLogin = async (req, res, next) => {
   const { email, password } = req.body;
   try {
@@ -49,7 +78,7 @@ export const UserLogin = async (req, res, next) => {
       id: userExist._id,
     };
 
-    const token = jwt.sign(payload, process.env.SECRET_KEY || "Ecommerce247", {
+    const token = jwt.sign(payload, process.env.SECRET_KEY || "FUNDMYCARE123", {
       expiresIn: "24h",
     });
     const { password: hashedPassword, ...rest } = userExist._doc;
@@ -65,70 +94,138 @@ export const UserLogin = async (req, res, next) => {
   }
 };
 
-// export const requestPasswordReset = async (req, res, next) => {
-//   const { email } = req.body;
-//   try {
-//     const user = await UserModel.findOne({ email });
-//     if (!user) {
-//       return next(errorResponse(404, "user not found"));
-//     }
+//VERIFY EMAIL
+export const VerifyOtp = async (req, res, next) => {
+  const { email, otp } = req.body;
 
-//     // Generate a reset token
-//     const { resetToken, hashedToken } = generateResetToken();
+  try {
+    const user = await UserModel.findOne({ email });
 
-//     // Set token expiration time (5 minutes)
-//     user.resetPasswordToken = hashedToken;
-//     user.resetPasswordExpires = Date.now() + tokenExpirationTime;
+    if (!user) return next(errorResponse(404, "user not found"));
 
-//     await user.save();
+    if (user.isVerified) {
+      return next(errorResponse(400, "This account is already verified"));
+    }
 
-//     // Send the password reset email
-//     await sendPasswordResetEmail(user, resetToken);
+    const isOtpValid = await bcrypt.compare(otp, user.otp);
+    if (!isOtpValid) return next(errorResponse(400, "Invalid OTP"));
 
-//     res
-//       .status(200)
-//       .json({ message: "Password reset token generated successfully" });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
+    if (user.otpExpiresAt < Date.now()) {
+      return next(errorResponse(400, "Code has expired. Please request again"));
+    }
 
-// // Step 2: Reset Password (using the reset token)
-// export const resetPassword = async (req, res, next) => {
-//   const { resetToken, newPassword } = req.body;
+    user.isVerified = true;
+    user.otp = null;
+    user.otpExpiresAt = null;
 
-//   try {
-//     // Hash the received token to match the stored token
-//     const hashedToken = crypto
-//       .createHash("sha256")
-//       .update(resetToken)
-//       .digest("hex");
+    await user.save();
 
-//     // Find the user by the reset token and check if the token is still valid
-//     const user = await UserModel.findOne({
-//       resetPasswordToken: hashedToken,
-//       //   resetPasswordExpires: { $gt: Date.now() }, // Check if the token is not expired
-//     });
+    res.status(200).json({
+      success: true,
+      message: "OTP verified successfully",
+      user: user._id,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-//     if (!user) {
-//       return res
-//         .status(400)
-//         .json({ error: "Invalid or expired password reset token" });
-//     }
+//RESET PASSWORD
+export const requestPasswordReset = async (req, res, next) => {
+  const { email } = req.body;
+  try {
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      return next(errorResponse(404, "User not found"));
+    }
 
-//     // Hash the new password and save it
-//     user.password = await bcrypt.hash(newPassword, 10);
-//     user.resetPasswordToken = undefined; // Clear the reset token
-//     // user.resetPasswordExpires = undefined; // Clear the expiration time
-//     await user.save();
+    // Generate an OTP and expiration time
+    const otp = generateOtp();
+    user.resetPasswordOtp = otp;
+    user.resetPasswordOtpExpires = generateExpiryTime();
 
-//     res.status(200).json({ message: "Password has been reset successfully" });
-//   } catch (error) {
-//     console.error(error);
-//     next(error);
-//   }
-// };
+    await user.save();
 
+    // Send the OTP via email
+    await sendPasswordResetEmail(user.email, otp);
+
+    res.status(200).json({ message: "Password reset OTP sent to your email" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Step 2: Reset Password (using the reset token)
+export const resetPassword = async (req, res, next) => {
+  const { otp, newPassword } = req.body;
+
+  try {
+    const user = await UserModel.findOne({
+      resetPasswordOtp: otp,
+      resetPasswordOtpExpires: { $gt: Date.now() }, // Check if OTP is not expired
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: "Invalid or expired OTP" });
+    }
+
+    // Hash the new password and save it
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordOtp = undefined; // Clear the OTP
+    user.resetPasswordOtpExpires = undefined; // Clear the expiration time
+    await user.save();
+
+    res.status(200).json({ message: "Password has been reset successfully" });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+//RESEND OTP
+export const ResendOTP = async (req, res, next) => {
+  const { email } = req.body;
+  try {
+    if (!email) {
+      return next(errorResponse(400, "Please provide either email"));
+    }
+
+    const user = await UserModel.findOne({ email });
+
+    if (!user) return next(errorResponse(404, "user not found"));
+
+    const currentTime = new Date();
+    if (user.otpExpiresAt && currentTime <= new Date(user.otpExpiresAt)) {
+      return next(
+        errorResponse(
+          400,
+          "You can only request a new OTP after the current one expires"
+        )
+      );
+    }
+
+    const otp = generateOTP();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const expiresAt = generateExpiryTime(); // The OTP has an expiry time (3 minutes)
+
+    // Send OTP to user via email
+    await resetPasswordOtpEmail(email, otp);
+
+    user.otp = hashedOtp;
+    user.otpExpiresAt = expiresAt;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP resent successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//GET USER PROFILE
 export const getUserProfile = async (req, res, next) => {
   try {
     const user = await UserModel.findById(req.user.id).select("-password");
@@ -142,55 +239,27 @@ export const getUserProfile = async (req, res, next) => {
   }
 };
 
-export const changePassword = async (req, res, next) => {
-  const { currentPassword, newPassword } = req.body;
-
-  try {
-    if (!currentPassword || !newPassword) {
-      return next(
-        errorResponse(400, "Please provide both current and new passwords.")
-      );
-    }
-
-    const user = await UserModel.findById(req.user.id);
-    if (!user) {
-      return next(errorResponse(404, "User not found."));
-    }
-
-    const isPasswordValid = await bcrypt.compare(
-      currentPassword,
-      user.password
-    );
-    if (!isPasswordValid) {
-      return next(errorResponse(401, "Incorrect current password."));
-    }
-
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-
-    user.password = hashedNewPassword;
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Password updated successfully.",
-    });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
-
+//UPDATE USER PROFILE
 export const updateUserProfile = async (req, res, next) => {
   try {
     const userId = req.params.id;
-    const { email, fullName, bio, profilePicture, address } = req.body;
+    const { email, fullName, bio, profilePicture, address, password } =
+      req.body;
 
     const updateFields = {};
+
+    // Update regular fields if they are present in the request
     if (email) updateFields.email = email;
     if (fullName) updateFields.fullName = fullName;
     if (bio) updateFields.bio = bio;
     if (profilePicture) updateFields.profilePicture = profilePicture;
     if (address) updateFields.address = address;
+
+    // If a new password is provided, hash it and add to update fields
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateFields.password = hashedPassword;
+    }
 
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
@@ -202,7 +271,8 @@ export const updateUserProfile = async (req, res, next) => {
       return next(errorResponse(404, "User not found"));
     }
 
-    const { password, ...userResponse } = updatedUser.toObject();
+    // Exclude the password from the response
+    const { password: _, ...userResponse } = updatedUser.toObject();
 
     return res.status(200).json({
       success: true,
@@ -214,6 +284,7 @@ export const updateUserProfile = async (req, res, next) => {
   }
 };
 
+// USER LOGOUT
 export const userLogout = async (req, res, next) => {
   const userId = req.params.id;
   try {
