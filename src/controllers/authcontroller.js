@@ -1,9 +1,11 @@
 import UserModel from "../models/usermodel.js";
 import errorResponse from "../utility/error.js";
+import UserWalletModel from "../models/userwalletmodel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { generateOTP, generateExpiryTime } from "../utility/otp.js";
 import { signupEmail, resetPasswordOtpEmail } from "../utility/sender.js";
+import { validateEmail,validatePassword } from "../utility/validator.js";
 
 //USER SIGNUP
 export const UserSignUp = async (req, res, next) => {
@@ -14,9 +16,23 @@ export const UserSignUp = async (req, res, next) => {
       return next(errorResponse(400, "Please fill all fields"));
     }
 
-    // Check if the user already exists by email or phone number
-    const UserExist = await UserModel.findOne({ email });
-    if (UserExist) return next(errorResponse(409, "User already exists"));
+    // Validate email and password
+    if (!validateEmail(email)) {
+      return res.status(400).json({
+        error: "ENTER A VALID EMAIL",
+      });
+    }
+
+    if (!validatePassword(password)) {
+      return res.status(400).json({
+        error:
+          "Password must be at least 8 characters long, including uppercase,lowercase, special character and number"
+      });
+    }
+
+    // Check if the user already exists by email
+    const userExist = await UserModel.findOne({ email });
+    if (userExist) return next(errorResponse(409, "User already exists"));
 
     // Generate OTP and hash password
     const otp = generateOTP();
@@ -24,45 +40,45 @@ export const UserSignUp = async (req, res, next) => {
     const hashedOtp = await bcrypt.hash(otp, 10);
     const expiresAt = generateExpiryTime();
 
-    // Send OTP to user via email
-    await signupEmail(email, otp);
-
-    const wallet = await UserWallet.create({
-      userID: user._id,
-      walletBalance: 0,
-    });
-
-    user.wallet = wallet._id;
-
-    // Create the user object, including referredBy if an affiliate cookie exists
-    const newUser = {
+    // Create the user in the database first
+    const newUser = await UserModel.create({
       fullName,
       email: email.toLowerCase(),
       password: hashedPassword,
-      wallet,
       otp: hashedOtp,
       otpExpiresAt: expiresAt,
-    };
+    });
 
-    // Save the new user in the database
-    const user = await UserModel.create(newUser);
+    // Create a wallet linked to the user ID
+    const wallet = await UserWalletModel.create({
+      userID: newUser._id,
+      walletBalance: 0,
+    });
+
+    // Update the user with the wallet ID
+    newUser.wallet = wallet._id;
+    await newUser.save();
+
+    // Send OTP to user via email
+    await signupEmail(email, otp);
 
     // Return success response
     return res.status(201).json({
       success: true,
       message: "OTP sent successfully",
       data: {
-        fullName,
-        email: user.email,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
+        fullName: newUser.fullName,
+        email: newUser.email,
+        createdAt: newUser.createdAt,
+        updatedAt: newUser.updatedAt,
       },
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     next(error);
   }
 };
+
 
 //LOGIN
 export const UserLogin = async (req, res, next) => {
@@ -140,39 +156,52 @@ export const requestPasswordReset = async (req, res, next) => {
     }
 
     // Generate an OTP and expiration time
-    const otp = generateOtp();
+    const otp = generateOTP();
     user.resetPasswordOtp = otp;
     user.resetPasswordOtpExpires = generateExpiryTime();
 
     await user.save();
 
     // Send the OTP via email
-    await sendPasswordResetEmail(user.email, otp);
+    await resetPasswordOtpEmail(user.email, otp);
 
     res.status(200).json({ message: "Password reset OTP sent to your email" });
   } catch (error) {
+    console.log(error);
+    
     next(error);
   }
 };
 
 // Step 2: Reset Password (using the reset token)
+const validateOtp = async (providedOtp, storedOtp) => {
+  if (!providedOtp || !storedOtp) return false;
+  try {
+    return await bcrypt.compare(providedOtp, storedOtp);
+  } catch (error) {
+    console.error("Error comparing OTP:", error);
+    return false;
+  }
+};
+
 export const resetPassword = async (req, res, next) => {
-  const { otp, newPassword } = req.body;
+  const { email, otp, newPassword } = req.body;
 
   try {
-    const user = await UserModel.findOne({
-      resetPasswordOtp: otp,
-      resetPasswordOtpExpires: { $gt: Date.now() }, // Check if OTP is not expired
-    });
-
+    const user = await UserModel.findOne({ email });
     if (!user) {
+      return res.status(400).json({ error: "User not found" });
+    }
+
+    if (!user.resetPasswordOtp || user.resetPasswordOtpExpires < Date.now()) {
       return res.status(400).json({ error: "Invalid or expired OTP" });
     }
 
-    // Hash the new password and save it
+  
+
     user.password = await bcrypt.hash(newPassword, 10);
-    user.resetPasswordOtp = undefined; // Clear the OTP
-    user.resetPasswordOtpExpires = undefined; // Clear the expiration time
+    user.resetPasswordOtp = undefined;
+    user.resetPasswordOtpExpires = undefined;
     await user.save();
 
     res.status(200).json({ message: "Password has been reset successfully" });
@@ -181,6 +210,9 @@ export const resetPassword = async (req, res, next) => {
     next(error);
   }
 };
+
+
+
 
 //RESEND OTP
 export const ResendOTP = async (req, res, next) => {
@@ -283,6 +315,7 @@ export const updateUserProfile = async (req, res, next) => {
     next(error);
   }
 };
+
 
 // USER LOGOUT
 export const userLogout = async (req, res, next) => {

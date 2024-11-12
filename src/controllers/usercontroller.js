@@ -4,37 +4,40 @@ import errorResponse from "../utility/error.js";
 
 // controllers/userController.js
 
-
 //CHANGE USER ROLE
 export const changeUserRole = async (req, res, next) => {
   try {
-    const { userId } = req.params; 
-    const { newRole } = req.body;  
+    const { email, newRole } = req.body;
 
-    // Check if new role is valid
+    // Validate the new role
     if (
       ![
         "donor",
         "Healthcare organization",
         "admin",
         "medical professional",
-        "medical student",
       ].includes(newRole)
     ) {
       return res.status(400).json({ message: "Invalid role specified." });
     }
 
-    const user = await User.findById(userId);
+    // Find user by email, excluding the password field
+    const user = await UserModel.findOne({ email }).select("-password");
+
     if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+      return res.status(404).json({ message: "User not found." });
     }
 
     // Update role
     user.role = newRole;
     await user.save();
 
-    return res.status(200).json({ message: `Role updated to ${newRole}.`, user });
+    // Return the updated user profile without sensitive fields
+    return res.status(200).json({
+      message: `Role updated to ${newRole}.`,
+    });
   } catch (error) {
     next(error);
   }
 };
+

@@ -10,6 +10,8 @@ import userRoutes from "./routes/userroute.js";
 import adminRoutes from "./routes/adminroutes.js";
 import campaignRoutes from "./routes/campaignroutes.js";
 import projectRoutes from "./routes/projectroutes.js";
+import passport from "./passport.js";
+import session from "express-session";
 
 dotenv.config();
 
@@ -24,6 +26,18 @@ app.use(cookieparser());
 app.use(
   morgan(":method :url :status :res[content-length] - :response-time ms")
 );
+
+
+// Middleware for handling sessions
+app.use(session({
+  secret: 'your-session-secret',
+  resave: false,
+  saveUninitialized: false,
+}));
+
+// Initialize Passport and session support
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);

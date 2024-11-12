@@ -2,6 +2,9 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
+    googleId: {
+      type: String,
+    },
     fullName: {
       type: String,
       required: true,
@@ -40,7 +43,6 @@ const userSchema = new mongoose.Schema(
         "Healthcare organization",
         "admin",
         "medical professional",
-        "medical student",
       ],
       default: "donor",
     },
@@ -64,6 +66,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    resetPasswordOtp: {
+      type: String,
+      default: null,
+    },
+    resetPasswordOtpExpires: {
+      type: Date,
+      default: null,
+    },
     wallet: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User-Wallet",
@@ -77,7 +87,6 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
 
 const UserModel = mongoose.model("User", userSchema);
 
