@@ -10,6 +10,8 @@ import userRoutes from "./routes/userroute.js";
 import adminRoutes from "./routes/adminroutes.js";
 import campaignRoutes from "./routes/campaignroutes.js";
 import projectRoutes from "./routes/projectroutes.js";
+import donationRoutes from "./routes/donationroutes.js";
+import communityengagementRoutes from "./routes/communityenagagement.js";
 import passport from "./passport.js";
 import session from "express-session";
 
@@ -44,6 +46,8 @@ app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("./api/campaign", campaignRoutes);
 app.use("./api/project", projectRoutes);
+app.use("/api/donation", donationRoutes);
+app.use("/api/community-enagagement", communityengagementRoutes);
 
 
 
