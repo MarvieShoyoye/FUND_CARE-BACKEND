@@ -6,9 +6,9 @@ import {
   updateProject,
   deleteProject,
   createChallenge,
-  // getChallenges,
-  // getChallengeById,
-  // deleteChallenge,
+  getChallenges,
+  getChallengeById,
+  deleteChallenge,
 } from "../controllers/projectcontroller.js";
 import { verifyToken } from "../auth/auth.js";
 
@@ -19,9 +19,9 @@ router.get("/", getProjects);
 router.get("/:id", getProjectById);
 router.put("/:id", verifyToken, updateProject);
 router.delete("/:id", verifyToken, deleteProject);
-router.post("/challenges", createChallenge);
-// router.get("/challenges", getChallenges);
-// router.get("/challenges/:id", getChallengeById);
-// router.delete("/challenges/:id", verifyToken, deleteChallenge);
+router.post("/challenges", verifyToken, createChallenge);
+router.get("/challenges", verifyToken, getChallenges);
+router.get("/challenges/:id", verifyToken, getChallengeById);
+router.delete("/challenges/:id", verifyToken, deleteChallenge);
 
 export default router;

@@ -11,10 +11,10 @@ import verifyToken from "../auth/auth.js";
 const router = express.Router();
 
 
-router.post("/campaigns", createCampaign);
-router.get("/campaigns", getCampaigns);
-router.get("/campaigns/:id", getCampaignById);
-router.patch("/campaigns/:id", updateCampaign);
-router.delete("/campaigns/:id", deleteCampaign);
+router.post("/campaigns",verifyToken, createCampaign);
+router.get("/campaigns",verifyToken, getCampaigns);
+router.get("/campaigns/:id",verifyToken, getCampaignById);
+router.patch("/campaigns/:id",verifyToken, updateCampaign);
+router.delete("/campaigns/:id",verifyToken, deleteCampaign);
 
 export default router;

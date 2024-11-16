@@ -6,7 +6,7 @@ const router = express.Router();
 
 
 
-router.post("/change-user-role/:id", changeUserRole);
+router.post("/change-user-role/:id", verifyToken, changeUserRole);
 
 
 

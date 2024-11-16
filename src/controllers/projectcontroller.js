@@ -164,5 +164,60 @@ export const getChallengesByProjectId = async (req, res, next) => {
   }
 };
 
+// Get all challenges
+export const getChallenges = async (req, res) => {
+  try {
+    const challenges = await Challenge.find(); // Fetch all challenges
+    res.status(200).json({ success: true, data: challenges });
+  } catch (error) {
+    console.error("Error fetching challenges:", error.message);
+    res.status(500).json({ success: false, message: "Failed to fetch challenges" });
+  }
+};
 
+// Get a challenge by ID
+export const getChallengeById = async (req, res) => {
+  const { id } = req.params;
+
+  // Validate ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ success: false, message: "Invalid challenge ID" });
+  }
+
+  try {
+    const challenge = await Challenge.findById(id);
+
+    if (!challenge) {
+      return res.status(404).json({ success: false, message: "Challenge not found" });
+    }
+
+    res.status(200).json({ success: true, data: challenge });
+  } catch (error) {
+    console.error(`Error fetching challenge with ID ${id}:`, error.message);
+    res.status(500).json({ success: false, message: "Failed to fetch the challenge" });
+  }
+};
+
+// Delete a challenge
+ export const deleteChallenge = async (req, res) => {
+  const { id } = req.params;
+
+  // Validate ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ success: false, message: "Invalid challenge ID" });
+  }
+
+  try {
+    const challenge = await Challenge.findByIdAndDelete(id);
+
+    if (!challenge) {
+      return res.status(404).json({ success: false, message: "Challenge not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Challenge deleted successfully" });
+  } catch (error) {
+    console.error(`Error deleting challenge with ID ${id}:`, error.message);
+    res.status(500).json({ success: false, message: "Failed to delete the challenge" });
+  }
+};
 

@@ -36,10 +36,10 @@ router.post("/signup", UserSignUp);
 router.post("/login", UserLogin);
 router.post("/verify", VerifyOtp);
 router.post("/resend-otp", ResendOTP);
-router.post("/request-password-reset", requestPasswordReset);
-router.post("/reset-password", resetPassword);
+router.post("/request-password-reset",verifyToken, requestPasswordReset);
+router.post("/reset-password",verifyToken, resetPassword);
 router.get("/me", verifyToken, getUserProfile);
-router.patch("/update/:id", updateUserProfile);
+router.patch("/update/:id",verifyToken, updateUserProfile);
 router.delete("/logout/:id", userLogout);
 
 export default router;

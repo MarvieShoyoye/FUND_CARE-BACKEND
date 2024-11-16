@@ -4,12 +4,13 @@ import {
   getProjectMetrics,
   updateProjectMetrics,
 } from "../controllers/impactmetricscontroller.js";
+import verifyToken from "../auth/auth.js";
 
 const router = express.Router();
 
 // Route to get overall impact metrics
-router.get("/overall", getOverallImpactMetrics);
-router.get("/project/:projectId", getProjectMetrics);
-router.put("/project/:projectId", updateProjectMetrics);
+router.get("/overall", verifyToken, getOverallImpactMetrics);
+router.get("/project/:projectId", verifyToken, getProjectMetrics);
+router.put("/project/:projectId", verifyToken, updateProjectMetrics);
 
 export default router;

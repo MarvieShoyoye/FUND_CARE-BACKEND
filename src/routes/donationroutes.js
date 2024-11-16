@@ -12,11 +12,11 @@ import verifyToken from "../auth/auth.js";
   
 const router = express.Router();
 
-router.post("/create-donation", createDonation);
-router.post("/donation", getDonations);
-router.get("/all-donations", getAllDonations);
-router.get("/:id", getDonationById);
-router.put("/:id", updateDonationStatus);
-router.delete("/:id", deleteDonation);
+router.post("/create-donation", verifyToken, createDonation);
+router.post("/donation", verifyToken, getDonations);
+router.get("/all-donations", verifyToken, getAllDonations);
+router.get("/:id", verifyToken, getDonationById);
+router.put("/:id", verifyToken, updateDonationStatus);
+router.delete("/:id", verifyToken, deleteDonation);
 
 export default router;
