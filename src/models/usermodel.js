@@ -74,6 +74,11 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    status: {
+      type: String,
+      enum: ['active', 'disabled', 'suspended'],
+      default: 'active'
+    },
     wallet: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User-Wallet",

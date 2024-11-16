@@ -220,3 +220,65 @@ export const updateLeaderboard = async (req, res, next) => {
   }
 };
 
+
+// Admin: Update User Status
+export const updateUserStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body; // Expect 'active', 'disabled', or 'suspended'
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ success: false, message: "Invalid user ID" });
+  }
+
+  try {
+    const user = await User.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.status(200).json({ success: true, message: `User status updated to ${status}`, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update user status" });
+  }
+};
+
+// Admin: Fetch All Users
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('-password'); // Exclude sensitive information
+    res.status(200).json({ success: true, data: users });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch users" });
+  }
+};
+
+// Authentication: Login
+export const loginUser = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user || user.status !== 'active') {
+      return res.status(401).json({ success: false, message: "Invalid credentials or account not active" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+
+    const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
+
+    res.status(200).json({ success: true, token, user: { id: user._id, email: user.email, role: user.role } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Login failed" });
+  }
+};
+
