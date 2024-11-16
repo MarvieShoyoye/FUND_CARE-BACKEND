@@ -11,6 +11,7 @@ import adminRoutes from "./routes/adminroutes.js";
 import campaignRoutes from "./routes/campaignroutes.js";
 import projectRoutes from "./routes/projectroutes.js";
 import donationRoutes from "./routes/donationroutes.js";
+import paymentRoutes from "./routes/paymentroute.js";
 import communityengagementRoutes from "./routes/communityenagagement.js";
 import passport from "./passport.js";
 import session from "express-session";
