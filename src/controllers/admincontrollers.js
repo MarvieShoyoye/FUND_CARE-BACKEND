@@ -234,7 +234,11 @@ export const updateUserStatus = async (req, res, next) => {
 
   try {
     // Find and update the user status
-    const user = await User.findByIdAndUpdate(id, { status }, { new: true });
+    const user = await UserModel.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
 
     // If the user is not found, return error
     if (!user) {
@@ -253,24 +257,22 @@ export const updateUserStatus = async (req, res, next) => {
   }
 };
 
-  
-  
 // Admin: Fetch All Users
-  export const getAllUsers = async (req, res) => {
-    try {
-      const users = await User.find().select("-password"); // Exclude sensitive information
-      res.status(200).json({ success: true, data: users });
-    } catch (error) {
-     next(error);
-    }
-}
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await UserModel.find().select("-password"); // Exclude sensitive information
+    res.status(200).json({ success: true, data: users });
+  } catch (error) {
+    next(error);
+  }
+};
 
 // Authentication: Login
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    const user = await UserModel.findOne({ email });
 
     if (!user || user.status !== "active") {
       return next(
@@ -318,9 +320,10 @@ export const flagContent = async (req, res) => {
     await HealthNews.save();
 
     // Send success response
-    return res
-      .status(200)
-      .json({ message: "HealthNews has been flagged successfully", HealthNews });
+    return res.status(200).json({
+      message: "HealthNews has been flagged successfully",
+      HealthNews,
+    });
   } catch (error) {
     next(error);
   }
