@@ -29,13 +29,14 @@ app.use(
   morgan(":method :url :status :res[content-length] - :response-time ms")
 );
 
-
 // Middleware for handling sessions
-app.use(session({
-  secret: 'your-session-secret',
-  resave: false,
-  saveUninitialized: false,
-}));
+app.use(
+  session({
+    secret: "your-session-secret",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
 
 // Initialize Passport and session support
 app.use(passport.initialize());
@@ -48,8 +49,6 @@ app.use("./api/campaign", campaignRoutes);
 app.use("./api/project", projectRoutes);
 app.use("/api/donation", donationRoutes);
 app.use("/api/community-enagagement", communityengagementRoutes);
-
-
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
@@ -64,6 +63,5 @@ app.use((err, req, res, next) => {
 
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
-    console.log(`Server is running at port ${port}`);
-    
-})
+  console.log(`Server is running at port ${port}`);
+});

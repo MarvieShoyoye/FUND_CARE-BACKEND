@@ -1,6 +1,6 @@
 import express from "express";
 import {
-  createNewsArticle,
+  createHealthNews,
   getAllNewsArticles,
   getNewsArticleById,
   updateNewsArticle,
@@ -10,7 +10,7 @@ import {
 const router = express.Router();
 
 // Route to create a new health news article
-router.post("/", createNewsArticle);
+router.post("/", createHealthNews);
 
 // Route to get all health news articles
 router.get("/", getAllNewsArticles);
