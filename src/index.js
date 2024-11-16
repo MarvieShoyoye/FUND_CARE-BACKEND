@@ -50,6 +50,7 @@ app.use("./api/campaign", campaignRoutes);
 app.use("./api/project", projectRoutes);
 app.use("/api/donation", donationRoutes);
 app.use("/api/community-enagagement", communityengagementRoutes);
+app.use("/api/payment", paymentRoutes);
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
