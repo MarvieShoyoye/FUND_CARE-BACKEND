@@ -28,6 +28,14 @@ const HealthNewsSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Comment",
     },
+    flagged: {
+      type: Boolean,
+      default: false,
+    },
+    flagsCount: {
+      type: Number,
+      default: 0,
+    }, // Track how many times the post has been flagged
   },
   {
     timestamps: true,

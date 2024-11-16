@@ -10,6 +10,7 @@ import {
   loginUser,
   getAllUsers,
   updateUserStatus,
+  flagContent,
 } from "../controllers/admincontrollers.js";
 
 import { verifyToken, isAdmin } from "../auth/auth.js";
@@ -40,5 +41,6 @@ router.post("/login", verifyToken, isAdmin, loginUser);
 // Admin User Management Routes
 router.get("/users", verifyToken, isAdmin, getAllUsers);
 router.patch("/users/:id/status", verifyToken, isAdmin, updateUserStatus);
+router.patch("/flagContent/:id", verifyToken, isAdmin, flagContent);
 
 export default router;

@@ -4,7 +4,7 @@ import {
   getProjectMetrics,
   updateProjectMetrics,
 } from "../controllers/impactmetricscontroller.js";
-import verifyToken from "../auth/auth.js";
+import { verifyToken } from "../auth/auth.js";
 
 const router = express.Router();
 

@@ -1,6 +1,6 @@
 import express from "express";
 import { processPayment } from "../controllers/paymentcontroller.js";
-import verifyToken from "../auth/auth.js";
+import { verifyToken } from "../auth/auth.js";
 
 const router = express.Router();
 

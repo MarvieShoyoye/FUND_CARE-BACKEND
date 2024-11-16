@@ -8,7 +8,7 @@ import {
   updateDonationStatus,
   deleteDonation,
 } from "../controllers/donationcontroller.js";
-import verifyToken from "../auth/auth.js";
+import { verifyToken } from "../auth/auth.js";
   
 const router = express.Router();
 

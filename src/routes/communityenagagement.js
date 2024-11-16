@@ -6,7 +6,7 @@ import {
   updateNewsArticle,
   deleteNewsArticle,
 } from "../controllers/communityengagement.js";
-import verifyToken from "../auth/auth.js";
+import { verifyToken } from "../auth/auth.js";
 
 const router = express.Router();
 

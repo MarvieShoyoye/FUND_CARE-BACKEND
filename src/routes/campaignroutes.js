@@ -6,7 +6,7 @@ import {
   updateCampaign,
   deleteCampaign,
 } from "../controllers/campaigncontroller.js";
-import verifyToken from "../auth/auth.js";
+import { verifyToken } from "../auth/auth.js";
 
 const router = express.Router();
 

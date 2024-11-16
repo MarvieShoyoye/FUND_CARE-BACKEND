@@ -1,7 +1,7 @@
 import UserModel from "../models/usermodel.js";
 import errorResponse from "../utility/error.js";
-
-
+import HealthNews from "../models/communityenagagement.js";
+import Challenge from "../models/challengemodel.js";
 
 export const createAdmin = async (req, res, next) => {
   const { firstName, lastName, email, gender, phoneNumber, password } =
@@ -101,13 +101,12 @@ export const adminLogout = async (req, res) => {
     );
 
     if (!admin) {
-      return res.status(404).json({ error: "admin not found" });
+      return next(errorResponse(404, "admin not found"));
     }
 
     return res.status(200).json({ message: "admin logged out successfully" });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Internal server error" });
+    next(error);
   }
 };
 
@@ -160,9 +159,9 @@ export const resetPassword = async (req, res, next) => {
     });
 
     if (!admin) {
-      return res
-        .status(400)
-        .json({ error: "Invalid or expired password reset token" });
+      return next(
+        errorResponse(400, "Invalid or expired password reset token")
+      );
     }
 
     // Hash the new password and save it
@@ -173,8 +172,7 @@ export const resetPassword = async (req, res, next) => {
 
     res.status(200).json({ message: "Password has been reset successfully" });
   } catch (error) {
-    console.error(error);
-    next(errorResponse(500, "Internal server error"));
+    next(error);
   }
 };
 
@@ -194,15 +192,17 @@ export const getAdminProfile = async (req, res, next) => {
   }
 };
 
-
-
-
 // Assuming you have a middleware that checks if the user is an admin
 export const updateLeaderboard = async (req, res, next) => {
   try {
     // Check if the user is an admin
     if (!req.user || !req.user.isAdmin) {
-      return res.status(403).json({ message: 'You do not have permission to update the leaderboard' });
+      return next(
+        errorResponse(
+          403,
+          "You do not have permission to update the leaderboard"
+        )
+      );
     }
 
     const { challengeId } = req.params;
@@ -212,50 +212,58 @@ export const updateLeaderboard = async (req, res, next) => {
       challengeId,
       { $push: { leaderboard: { donorId, amount } } },
       { new: true }
-    ).populate('leaderboard.donorId', 'name');
+    ).populate("leaderboard.donorId", "name");
 
-    res.status(200).json({ message: 'Leaderboard updated successfully', challenge });
+    res
+      .status(200)
+      .json({ message: "Leaderboard updated successfully", challenge });
   } catch (error) {
     next(error);
   }
 };
 
-
 // Admin: Update User Status
-export const updateUserStatus = async (req, res) => {
+export const updateUserStatus = async (req, res, next) => {
   const { id } = req.params;
   const { status } = req.body; // Expect 'active', 'disabled', or 'suspended'
 
+  // Validate the user ID
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ success: false, message: "Invalid user ID" });
+    return next(errorResponse(400, "Invalid user ID"));
   }
 
   try {
-    const user = await User.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
+    // Find and update the user status
+    const user = await User.findByIdAndUpdate(id, { status }, { new: true });
 
+    // If the user is not found, return error
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return next(errorResponse(400, "User not found"));
     }
 
-    res.status(200).json({ success: true, message: `User status updated to ${status}`, data: user });
+    // Return success response
+    res.status(200).json({
+      success: true,
+      message: `User status updated to ${status}`,
+      data: user,
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to update user status" });
+    // Pass the error to the error handling middleware
+    next(error);
   }
 };
 
+  
+  
 // Admin: Fetch All Users
-export const getAllUsers = async (req, res) => {
-  try {
-    const users = await User.find().select('-password'); // Exclude sensitive information
-    res.status(200).json({ success: true, data: users });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to fetch users" });
-  }
-};
+  export const getAllUsers = async (req, res) => {
+    try {
+      const users = await User.find().select("-password"); // Exclude sensitive information
+      res.status(200).json({ success: true, data: users });
+    } catch (error) {
+     next(error);
+    }
+}
 
 // Authentication: Login
 export const loginUser = async (req, res) => {
@@ -264,21 +272,56 @@ export const loginUser = async (req, res) => {
   try {
     const user = await User.findOne({ email });
 
-    if (!user || user.status !== 'active') {
-      return res.status(401).json({ success: false, message: "Invalid credentials or account not active" });
+    if (!user || user.status !== "active") {
+      return next(
+        errorResponse(401, "Invalid credentials or account not active")
+      );
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
+      return next(errorResponse(401, "Invalid credentials"));
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
+      expiresIn: "1d",
+    });
 
-    res.status(200).json({ success: true, token, user: { id: user._id, email: user.email, role: user.role } });
+    res.status(200).json({
+      success: true,
+      token,
+      user: { id: user._id, email: user.email, role: user.role },
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Login failed" });
+    next(error);
   }
 };
 
+export const flagContent = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Find the News by ID
+    const HealthNews = await HealthNews.findById(id);
+
+    // If HealthNews doesn't exist, send error response
+    if (!HealthNews) {
+      return next(errorResponse(404, "HealthNews not found"));
+    }
+
+    // Flag the HealthNews
+    HealthNews.flagged = true;
+    HealthNews.flagsCount += 1; // Increment the flag count
+
+    // Save the updated HealthNews
+    await HealthNews.save();
+
+    // Send success response
+    return res
+      .status(200)
+      .json({ message: "HealthNews has been flagged successfully", HealthNews });
+  } catch (error) {
+    next(error);
+  }
+};
